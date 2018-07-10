@@ -1,24 +1,45 @@
 // CarLower Controler
 
-//************* Direction Declaration ***************//
+// Direction Declaration *********************** {{{
 //                        ^ y
 //                        |
 //                --------0--------> x
 //                      z |
 //                        |
-//********** End of Direction Declaration ***********//
+// EO Direction Declaration ******************** }}}
+
+// INCLUDE ************************************* {{{
+
+#include "MCP23S17.h"
 
 
-//************ Paramaters Definations ***************//
+// EO_INCLUDE ************************************** }}}
+
+// Definations ********************** {{{
 
 // Not used, wheel distance on width and length, unit in mm
 #define WIDTH 560
 #define LENGTH 410
 
-//********** End of Paramater Definations ***********//
+// Command definations
+#define STOP           Yosoro(0.0,0.0,0.0)
+#define FORWARD        Yosoro(0.0,fMoveVelocity,0.0)
+#define BACKWARD       Yosoro(0.0,-fMoveVelocity,0.0)
+#define LEFT_ROTATE    Yosoro(0.0,0.0,fMoveVelocity)
+#define RIGHT_ROTATE   Yosoro(0.0,0.0,-fMoveVelocity)
+#define LEFT_SHIFT     Yosoro(-fMoveVelocity,0.0,0.0)
+#define RIGHT_SHIFT    Yosoro(fMoveVelocity,0.0,0.0)
+#define TRACKING       7
 
-//********** Data Structure Definations *************//
+// EO Paramater Definations ******************** }}}
 
+// Data Structure Definations ****************** {{{
+
+enum Shu
+{
+	RC,
+	TRACK,
+};
 enum Hoiiru
 {
 	HIDARIMAE,
@@ -34,9 +55,17 @@ struct Hiirus
 	int d2;
 }hidarimae, hidariushiro, migimae, migiria;
 
-//******* End of Data Structure Definations *********//
+// End of Data Structure Definations *********** }}}
 
+// Global Variables **************************** {{{
+Shu shuCurrentState = RC;
+char cCommand = '0';
+float  fMoveVelocity = 0.2;
+String sCommands[] = {"stop", "forward", "backward", "left_rotate", "right_rotate", "left_shift", "right_shift", "tracking"};
+MCP tracker(0, PB7);
+// EO Global Variables ************************* }}}
 
+void Track();
 void Kaiten(Hoiiru h, float value);
 void Yosoro(float ekesi, float waii, float dabuyo);
 
@@ -47,14 +76,15 @@ void Debug();
 
 // the setup function runs once when you press reset or power the board
 void setup() {
-	//************** Pin Definations **********************//
-	// PWM pin defination
+	// Pin Definations ********************** {{{
+	// PWM pin defination ******************* {{{
 	hidarimae.pwm = PA1;
 	hidariushiro.pwm = PA0;
 	migimae.pwm = PA7;
 	migiria.pwm = PA6;
+	// EO PWM pin defination **************** }}}
 
-	// Dir pin defination
+	// Dir pin defination ******************* {{{
 	hidarimae.d1 = PA5;
 	hidarimae.d2 = PA4;
 	hidariushiro.d1 = PC13;
@@ -63,9 +93,9 @@ void setup() {
 	migimae.d2 = PB11;
 	migiria.d1 = PB1;
 	migiria.d2 = PB0;
-	//********** End of Pin Definations *******************//
+	// End of Pin Definations *************** }}}
 
-	//***************** PWM Pin Initialization ************//
+	// PWM Pin Initialization ************** {{{
 	pinMode(hidarimae.pwm,  PWM);
 	pinMode(hidariushiro.pwm,  PWM);
 	pinMode(migimae.pwm,  PWM);
@@ -79,17 +109,23 @@ void setup() {
 	pinMode(migimae.d2,  OUTPUT);
 	pinMode(migiria.d1,  OUTPUT);
 	pinMode(migiria.d2,  OUTPUT);
-	//***************End of PWM Pin Initialization ********//
+	// EO PWM Pin Initialization *********** }}}
 
-	//***************** Serial Initialization *************//
+	// Serial Initialization *************** {{{
 	// Debug Serial
-	Serial.begin(9600);
+	Serial.begin(115200);
 	// Data Serial
-	Serial2.begin(9600);
-	//************** End of Serial Initialization *********//
+	Serial2.begin(115200);
+	// EO Serial Initialization ************ }}}
+	// EO Pin Definations ****************** }}}
+
+	tracker.pinMode(0xFFFF);
+	tracker.pullupMode(0xFFFF);
+	tracker.inputInvert(0x0000);
 
 	//**************** Test for Debug Mode ****************//
-	Serial.setTimeout(5000);
+	Serial.setTimeout(5);
+	Serial2.setTimeout(5);
 	String message = Serial.readString();
 	if (message == "")
 	{
@@ -100,55 +136,94 @@ void setup() {
 	Serial.println("In Debug Mode");
 	Debug();
 	}
-	Serial.setTimeout(100);
+	Serial.setTimeout(10);
 }
 
 // the loop function runs over and over again forever
 void loop() {
-	char c = Serial2.read();
-    if (c == '0')
+	cCommand = Serial2.read();
+	if (isDigit(cCommand))  // IS a movement command
 	{
-		Serial.println("stop");
-		Yosoro(0.0, 0.0, 0.0);
-		return;
+		shuCurrentState = RC;
+		switch(cCommand)
+		{
+			case '0':
+				STOP;
+				break;
+			case '1':
+				FORWARD;
+				break;
+			case '2':
+				BACKWARD;
+				break;
+			case '3':
+				LEFT_ROTATE;
+				break;
+			case '4':
+				RIGHT_ROTATE;
+				break;
+			case '5':
+				LEFT_SHIFT;
+				break;
+			case '6':
+				RIGHT_SHIFT;
+				break;
+
+			default:
+				STOP;
+		}
 	}
-	if (c == '1')
+	else  // Is a action command.
 	{
-		Serial.println("forward");
-		Yosoro(0.0, 0.2, 0.0);
-		return;
+		switch(cCommand)
+		{
+			case 'T':
+				cCommand = '7';
+				shuCurrentState = TRACK;
+				break;
+			default:
+				STOP;
+		}
 	}
-	if (c == '2')
+	switch(shuCurrentState)
 	{
-		Serial.println("backward");
-		Yosoro(0.0, -0.2, 0.0);
-		return;
+		case TRACK:
+				Track();
+		default:
+				STOP;
 	}
-	if (c == '3')
+	Serial.println(sCommands[constrain(String(cCommand).toInt(), 0, 7)]);
+	cCommand = '0';
+}
+
+void Track()
+{
+	int t = 0;
+	for(int a = 4; a < 8; a++)
 	{
-		Serial.println("left shift");
-		Yosoro(-0.2, 0.0, 0.0);
-		return;
+		t |= tracker.digitalRead(a) & 0x01;
+		t = t << 1;
 	}
-	if (c == '4')
+	t = t >> 1;
+	t = t & 0x0F;
+	if(t == 0x0F)
 	{
-		Serial.println("right shift");
-		Yosoro(0.2, 0.0, 0.0);
-		return;
+		STOP;
 	}
-	if (c == '5')
+	if((t == 0x0C) || (t == 0x08) || (t == 0x04))
 	{
-		Yosoro(0.0, 0.0, 0.2);
-		Serial.println("left rotate");
-		return;
+		RIGHT_ROTATE;
 	}
-	if (c == '6')
+	if((t == 0x01) || (t == 0x02) || (t == 0x03))
 	{
-		Yosoro(0.0, 0.0, -0.2);
-		Serial.println("right rotate");
-		return;
+		LEFT_ROTATE;
+	}
+	else 
+	{
+		FORWARD;
 	}
 }
+
 
 
 void Yosoro(float ekesi, float waii, float dabuyo)

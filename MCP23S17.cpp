@@ -71,7 +71,9 @@
 #define    OPCODER       (0b01000001)  // Opcode for MCP23S17 with LSB (bit0) set to read (1), address OR'd in later, bits 1-3
 #define    ADDR_ENABLE   (0b00001000)  // Configuration register for MCP23S17, the only thing we change is enabling hardware addressing
 
-SPIClass SPI_2(PB7);
+SPIClass SPI_2(2);
+
+#define SPI SPI_2
 
 // Constructor to instantiate an instance of MCP to a specific chip (address)
 
@@ -87,10 +89,10 @@ MCP::MCP(uint8_t address, uint8_t ss) {
 void MCP::begin() {
   ::pinMode(_ss, OUTPUT);               // Set SlaveSelect pin as an output
   ::digitalWrite(_ss, HIGH);            // Set SlaveSelect HIGH (chip de-selected)
-  SPI_2.begin();                          // Start up the SPI bus
-  //SPI_2.setClockDivider(CLOCK_DIVIDER); // Sets the SPI bus speed
-  //SPI_2.setBitOrder(MSBFIRST);          // Sets SPI bus bit order (this is the default, setting it for good form!)
-  //SPI_2.setDataMode(SPI_MODE0);         // Sets the SPI bus timing mode (this is the default, setting it for good form!)
+  SPI.begin();                          // Start up the SPI bus
+  //SPI.setClockDivider(CLOCK_DIVIDER); // Sets the SPI bus speed
+  //SPI.setBitOrder(MSBFIRST);          // Sets SPI bus bit order (this is the default, setting it for good form!)
+  //SPI.setDataMode(SPI_MODE0);         // Sets the SPI bus timing mode (this is the default, setting it for good form!)
   byteWrite(IOCON, ADDR_ENABLE);
 }
 
@@ -98,9 +100,9 @@ void MCP::begin() {
 
 void MCP::byteWrite(uint8_t reg, uint8_t value) {      // Accept the register and byte
   ::digitalWrite(_ss, LOW);                            // Take slave-select low
-  SPI_2.transfer(OPCODEW | (_address << 1));             // Send the MCP23S17 opcode, chip address, and write bit
-  SPI_2.transfer(reg);                                   // Send the register we want to write
-  SPI_2.transfer(value);                                 // Send the byte
+  SPI.transfer(OPCODEW | (_address << 1));             // Send the MCP23S17 opcode, chip address, and write bit
+  SPI.transfer(reg);                                   // Send the register we want to write
+  SPI.transfer(value);                                 // Send the byte
   ::digitalWrite(_ss, HIGH);                           // Take slave-select high
 }
 
@@ -108,10 +110,10 @@ void MCP::byteWrite(uint8_t reg, uint8_t value) {      // Accept the register an
 
 void MCP::wordWrite(uint8_t reg, unsigned int word) {  // Accept the start register and word 
   ::digitalWrite(_ss, LOW);                            // Take slave-select low
-  SPI_2.transfer(OPCODEW | (_address << 1));             // Send the MCP23S17 opcode, chip address, and write bit
-  SPI_2.transfer(reg);                                   // Send the register we want to write 
-  SPI_2.transfer((uint8_t) (word));                      // Send the low byte (register address pointer will auto-increment after write)
-  SPI_2.transfer((uint8_t) (word >> 8));                 // Shift the high byte down to the low byte location and send
+  SPI.transfer(OPCODEW | (_address << 1));             // Send the MCP23S17 opcode, chip address, and write bit
+  SPI.transfer(reg);                                   // Send the register we want to write 
+  SPI.transfer((uint8_t) (word));                      // Send the low byte (register address pointer will auto-increment after write)
+  SPI.transfer((uint8_t) (word >> 8));                 // Shift the high byte down to the low byte location and send
   ::digitalWrite(_ss, HIGH);                           // Take slave-select high
 }
 
@@ -195,10 +197,10 @@ void MCP::digitalWrite(unsigned int value) {
 unsigned int MCP::digitalRead(void) {       // This function will read all 16 bits of I/O, and return them as a word in the format 0x(portB)(portA)
   unsigned int value = 0;                   // Initialize a variable to hold the read values to be returned
   ::digitalWrite(_ss, LOW);                 // Take slave-select low
-  SPI_2.transfer(OPCODER | (_address << 1));  // Send the MCP23S17 opcode, chip address, and read bit
-  SPI_2.transfer(GPIOA);                      // Send the register we want to read
-  value = SPI_2.transfer(0x00);               // Send any byte, the function will return the read value (register address pointer will auto-increment after write)
-  value |= (SPI_2.transfer(0x00) << 8);       // Read in the "high byte" (portB) and shift it up to the high location and merge with the "low byte"
+  SPI.transfer(OPCODER | (_address << 1));  // Send the MCP23S17 opcode, chip address, and read bit
+  SPI.transfer(GPIOA);                      // Send the register we want to read
+  value = SPI.transfer(0x00);               // Send any byte, the function will return the read value (register address pointer will auto-increment after write)
+  value |= (SPI.transfer(0x00) << 8);       // Read in the "high byte" (portB) and shift it up to the high location and merge with the "low byte"
   ::digitalWrite(_ss, HIGH);                // Take slave-select high
   return value;                             // Return the constructed word, the format is 0x(portB)(portA)
 }
@@ -206,9 +208,9 @@ unsigned int MCP::digitalRead(void) {       // This function will read all 16 bi
 uint8_t MCP::byteRead(uint8_t reg) {        // This function will read a single register, and return it
   uint8_t value = 0;                        // Initialize a variable to hold the read values to be returned
   ::digitalWrite(_ss, LOW);                 // Take slave-select low
-  SPI_2.transfer(OPCODER | (_address << 1));  // Send the MCP23S17 opcode, chip address, and read bit
-  SPI_2.transfer(reg);                        // Send the register we want to read
-  value = SPI_2.transfer(0x00);               // Send any byte, the function will return the read value
+  SPI.transfer(OPCODER | (_address << 1));  // Send the MCP23S17 opcode, chip address, and read bit
+  SPI.transfer(reg);                        // Send the register we want to read
+  value = SPI.transfer(0x00);               // Send any byte, the function will return the read value
   ::digitalWrite(_ss, HIGH);                // Take slave-select high
   return value;                             // Return the constructed word, the format is 0x(register value)
 }
