@@ -1,7 +1,5 @@
 # Command Structure
-`^<command id><Command><Target><Args>$`
-
-`<command id> - global id of current command, id will increase after a success command procedure.`
+`^<Command><Target><Args>$`
 
 `<Command>    - Operation`
 
@@ -112,4 +110,4 @@ client reply: `^E16V270$`
 
 
 # Lower communacation
-!id=<devide id>,<message>#
+!did=<devide id>mid=<message id>;<message>#

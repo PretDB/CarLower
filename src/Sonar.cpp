@@ -1,16 +1,22 @@
 #include <hcsr04.h>
 #include <SimpleKalmanFilter.h>
 
-#define TRIG_PIN PB8
-#define ECHO_PIN PB9
+#include "Point.h"
+#include "Vector.h"
 
+
+#ifdef TRIG_PIN
+#ifdef ECHO_PIN
 HCSR04 sonic(TRIG_PIN, ECHO_PIN);
-SimpleKalmanFilter filter(5, 1.0, 0.01);
-void setup()
-{
+#else
+#error ECHO_PIN NOT DEFIEND
+#endif
+#else
+#error TRIG_PIN NOT DEFIEND
+#endif
 
-	Serial.begin(115200);
-}
+SimpleKalmanFilter filter(5, 1.0, 0.01);
+
 
 void loop()
 {
