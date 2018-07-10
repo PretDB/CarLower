@@ -115,7 +115,7 @@ void setup() {
 	// Debug Serial
 	Serial.begin(115200);
 	// Data Serial
-	Serial2.begin(115200);
+	Serial2.begin(9600);
 	// EO Serial Initialization ************ }}}
 	// EO Pin Definations ****************** }}}
 
@@ -142,6 +142,7 @@ void setup() {
 // the loop function runs over and over again forever
 void loop() {
 	cCommand = Serial2.read();
+	Serial2.println("command: " + String(cCommand));
 	if (isDigit(cCommand))  // IS a movement command
 	{
 		shuCurrentState = RC;
