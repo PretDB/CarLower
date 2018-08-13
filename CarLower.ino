@@ -22,13 +22,13 @@
 #define LENGTH 410
 
 // Command definations
-#define STOP           Yosoro(0.0,0.0,0.0)
-#define FORWARD        Yosoro(0.0,fMoveVelocity,0.0)
-#define BACKWARD       Yosoro(0.0,-fMoveVelocity,0.0)
-#define LEFT_ROTATE    Yosoro(0.0,0.0,fMoveVelocity)
-#define RIGHT_ROTATE   Yosoro(0.0,0.0,-fMoveVelocity)
-#define LEFT_SHIFT     Yosoro(-fMoveVelocity,0.0,0.0)
-#define RIGHT_SHIFT    Yosoro(fMoveVelocity,0.0,0.0)
+#define MOVE_STOP           Yosoro(0.0,0.0,0.0)
+#define MOVE_FORWARD        Yosoro(0.0,fMoveVelocity,0.0)
+#define MOVE_BACKWARD       Yosoro(0.0,-fMoveVelocity,0.0)
+#define MOVE_LEFT_ROTATE    Yosoro(0.0,0.0,fMoveVelocity)
+#define MOVE_RIGHT_ROTATE   Yosoro(0.0,0.0,-fMoveVelocity)
+#define MOVE_LEFT_SHIFT     Yosoro(-fMoveVelocity,0.0,0.0)
+#define MOVE_RIGHT_SHIFT    Yosoro(fMoveVelocity,0.0,0.0)
 #define TRACKING       7
 
 // EO Paramater Definations ******************** }}}
@@ -37,7 +37,13 @@
 
 enum Shu
 {
-	RC,
+	STOP,
+	RC_FORWARD,
+	RC_BACKWARD,
+	RC_LEFT_ROTATE,
+	RC_RIGHT_ROTATE,
+	RC_LEFT_SHIFT,
+	RC_RIGHT_SHIFT,
 	TRACK,
 };
 enum Hoiiru
@@ -58,7 +64,7 @@ struct Hiirus
 // End of Data Structure Definations *********** }}}
 
 // Global Variables **************************** {{{
-Shu shuCurrentState = RC;
+Shu shuCurrentState = STOP;
 char cCommand = '0';
 float  fMoveVelocity = 0.2;
 String sCommands[] = {"stop", "forward", "backward", "left_rotate", "right_rotate", "left_shift", "right_shift", "tracking"};
@@ -76,7 +82,7 @@ void Debug();
 
 // the setup function runs once when you press reset or power the board
 void setup() {
-	// Pin Definations ********************** {{{
+	// Pin Initialization ****************** {{{
 	// PWM pin defination ******************* {{{
 	hidarimae.pwm = PA1;
 	hidariushiro.pwm = PA0;
@@ -115,9 +121,10 @@ void setup() {
 	// Debug Serial
 	Serial.begin(115200);
 	// Data Serial
-	Serial2.begin(9600);
+	Serial2.begin(115200);
 	// EO Serial Initialization ************ }}}
-	// EO Pin Definations ****************** }}}
+	tracker.begin();
+	// EO Pin Initialization *************** }}}
 
 	tracker.pinMode(0xFFFF);
 	tracker.pullupMode(0xFFFF);
@@ -126,52 +133,49 @@ void setup() {
 	//**************** Test for Debug Mode ****************//
 	Serial.setTimeout(5);
 	Serial2.setTimeout(5);
-	String message = Serial.readString();
-	if (message == "")
-	{
-
-	}
-	else
-	{
-	Serial.println("In Debug Mode");
-	Debug();
-	}
-	Serial.setTimeout(10);
 }
 
 // the loop function runs over and over again forever
 void loop() {
+	//delay(500);
+	Serial.println("online");
 	cCommand = Serial2.read();
-	Serial2.println("command: " + String(cCommand));
+	Serial.println("command: " + String(cCommand));
 	if (isDigit(cCommand))  // IS a movement command
 	{
-		shuCurrentState = RC;
 		switch(cCommand)
 		{
 			case '0':
-				STOP;
+				MOVE_STOP;
+				shuCurrentState = STOP;
 				break;
 			case '1':
-				FORWARD;
+				MOVE_FORWARD;
+				shuCurrentState = RC_FORWARD;
 				break;
 			case '2':
-				BACKWARD;
+				MOVE_BACKWARD;
+				shuCurrentState = RC_BACKWARD;
 				break;
 			case '3':
-				LEFT_ROTATE;
+				MOVE_LEFT_ROTATE;
+				shuCurrentState = RC_LEFT_ROTATE;
 				break;
 			case '4':
-				RIGHT_ROTATE;
+				MOVE_RIGHT_ROTATE;
+				shuCurrentState = RC_RIGHT_ROTATE;
 				break;
 			case '5':
-				LEFT_SHIFT;
+				MOVE_LEFT_SHIFT;
+				shuCurrentState = RC_LEFT_SHIFT;
 				break;
 			case '6':
-				RIGHT_SHIFT;
+				MOVE_RIGHT_SHIFT;
+				shuCurrentState = RC_RIGHT_SHIFT;
 				break;
 
 			default:
-				STOP;
+				MOVE_STOP;
 		}
 	}
 	else  // Is a action command.
@@ -179,22 +183,17 @@ void loop() {
 		switch(cCommand)
 		{
 			case 'T':
-				cCommand = '7';
 				shuCurrentState = TRACK;
 				break;
-			default:
-				STOP;
 		}
 	}
 	switch(shuCurrentState)
 	{
 		case TRACK:
 				Track();
-		default:
-				STOP;
 	}
-	Serial.println(sCommands[constrain(String(cCommand).toInt(), 0, 7)]);
-	cCommand = '0';
+	//Serial.println(sCommands[constrain(String(shuCurrentState).toInt(), 0, 7)]);
+	//cCommand = '0';
 }
 
 void Track()
@@ -209,19 +208,19 @@ void Track()
 	t = t & 0x0F;
 	if(t == 0x0F)
 	{
-		STOP;
+		MOVE_STOP;
 	}
 	if((t == 0x0C) || (t == 0x08) || (t == 0x04))
 	{
-		RIGHT_ROTATE;
+		MOVE_RIGHT_ROTATE;
 	}
 	if((t == 0x01) || (t == 0x02) || (t == 0x03))
 	{
-		LEFT_ROTATE;
+		MOVE_LEFT_ROTATE;
 	}
 	else 
 	{
-		FORWARD;
+		MOVE_FORWARD;
 	}
 }
 
